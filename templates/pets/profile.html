@@ -91,7 +91,7 @@
             </div>
 
             <div class="row row-cols-1 row-cols-md-2 g-4">
-                {% for pet in viewed_user.pet_set.all %}
+                {% for pet in pets %}
                     <div class="col">
                         {% include 'pets/partials/pet_box.html' with pet=pet show_delete=is_owner %}
                     </div>
