@@ -7,23 +7,33 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.db.models import Exists, OuterRef, Subquery, Value, IntegerField
+from django.db.models.functions import Coalesce
 from .forms import ExtendedUserCreationForm, UploadForm, UserProfileForm, CustomAuthenticationForm, CommentForm
 from .models import Bookmark, Pet, PetType, PetRating, UserProfile
 import datetime
 import json
 
+
+def _annotated_pets(qs, user):
+    """One query for the page: FKs joined, per-user rating/bookmark folded in
+    as correlated subqueries instead of a query per card."""
+    qs = qs.select_related('UserID', 'TypeID')
+    if not user.is_authenticated:
+        return qs.annotate(
+            user_commented=Value(False),
+            user_rating=Value(0, output_field=IntegerField()),
+            is_bookmarked=Value(False),
+        )
+    mine = PetRating.objects.filter(PetID=OuterRef('pk'), UserID=user)
+    return qs.annotate(
+        user_commented=Exists(mine.exclude(comment="")),
+        user_rating=Coalesce(Subquery(mine.values('stars')[:1]), Value(0)),
+        is_bookmarked=Exists(Bookmark.objects.filter(PetID=OuterRef('pk'), UserID=user)),
+    )
+
 def home(request):
-    pets = Pet.objects.all()
-    if request.user.is_authenticated:
-        for pet in pets:
-            pet.user_commented = PetRating.objects.filter(
-                PetID=pet, 
-                UserID=request.user
-            ).exists()
-    else:
-        for pet in pets:
-            pet.user_commented = False
-    
+    pets = _annotated_pets(Pet.objects.all(), request.user)
     return render(request, 'pets/home.html', {'pets': pets})
 
 @login_required
@@ -38,12 +48,7 @@ def top_pets(request):
     if not top_pets_list.exists():
         top_pets_list = Pet.objects.order_by('-average_rating')[:4]
     
-    # Add comment information for each pet
-    for pet in top_pets_list:
-        pet.user_commented = PetRating.objects.filter(
-            PetID=pet, 
-            UserID=request.user
-        ).exclude(comment="").exists()
+    top_pets_list = _annotated_pets(top_pets_list, request.user)
     
     # Add the top pets to the context dictionary and render the top pets template
     context = {
@@ -64,12 +69,7 @@ def categories(request):
     else:
         pets = Pet.objects.all()
     
-    # Add comment information for each pet
-    for pet in pets:
-        pet.user_commented = PetRating.objects.filter(
-            PetID=pet, 
-            UserID=request.user
-        ).exclude(comment="").exists()
+    pets = _annotated_pets(pets, request.user)
 
     # Add to the context dictionary the list of pets, types and selected type
     context = {
@@ -83,14 +83,8 @@ def categories(request):
 @login_required
 def bookmarks(request):
     # Fetch the pets that are bookmarked by the user
-    bookmarked_pets = Pet.objects.filter(bookmark__UserID=request.user)
-    
-    # Add comment information for each bookmarked pet
-    for pet in bookmarked_pets:
-        pet.user_commented = PetRating.objects.filter(
-            PetID=pet, 
-            UserID=request.user
-        ).exclude(comment="").exists()
+    bookmarked_pets = _annotated_pets(
+        Pet.objects.filter(bookmark__UserID=request.user), request.user)
     
     # Add the bookmarked pets to the context dictionary and render the bookmarks template
     context = {
@@ -146,7 +140,7 @@ def profile(request, username=None):
     else:
         viewed_user = get_object_or_404(User, username=username)
 
-    user_pets = Pet.objects.filter(UserID=viewed_user)
+    user_pets = _annotated_pets(Pet.objects.filter(UserID=viewed_user), request.user)
     user_profile, created = UserProfile.objects.get_or_create(user=viewed_user)
 
     is_owner = (request.user == viewed_user)

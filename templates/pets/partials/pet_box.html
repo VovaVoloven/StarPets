@@ -28,7 +28,7 @@
             </h2>
         {% endif %}
 
-        {% get_user_rating pet request.user as user_rating %}
+        {% with user_rating=pet.user_rating %}
         <div class="interactive-rating d-flex flex-column align-items-center gap-1 mb-3" data-pet-id="{{ pet.id }}" data-user-rating="{{ user_rating }}">
             <div class="user-rating-container d-flex align-items-center gap-2">
                 <strong class="text-muted small text-uppercase">Rating:</strong>
@@ -44,6 +44,7 @@
                 {{ pet.average_rating|default:0|draw_stars }}
             </div>
         </div> 
+        {% endwith %}
 
         <p class="text-muted small fst-italic vintage-serif" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
             "{{ pet.description }}"
@@ -55,7 +56,6 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
         </button>
         
-        {% has_user_bookmarked pet request.user as is_bookmarked %}
         {% if is_bookmarked %}
             <button class="btn-icon-action btn-unbookmark toggle-bookmark-btn" data-pet-id="{{ pet.id }}" title="Unbookmark">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
