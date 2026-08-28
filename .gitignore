@@ -5,3 +5,8 @@ media/
 .conda/
 .vscode/
 .env
+.claude/settings.local.json
+staticfiles/
+.venv/
+.env.*
+!.env.example
