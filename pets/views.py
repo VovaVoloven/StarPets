@@ -269,7 +269,7 @@ def get_comments(request, pet_id):
     comments_data = [{
         'username': r.UserID.username,
         'text': r.comment,
-        'date': r.rating_date.strftime("%b, %d, %Y"),
+        'date': r.rating_date.strftime("%b %d, %Y"),
         'is_owner': r.UserID == request.user
     }for r in ratings if r.comment]
 
