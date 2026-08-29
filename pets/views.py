@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.contrib.auth import login as auth_login, logout
@@ -243,20 +244,14 @@ def rate_pet(request, pet_id):
 
 
 #pet deletion
-@login_required
-def select_pet_delete(request):
-    user_pets = Pet.objects.filter(UserID=request.user)
-    return render(request, 'pets/select_pet_delete.html', {'pets': user_pets})
 
 @login_required
+@require_POST
 def delete_pet(request, pet_id):
     pet = get_object_or_404(Pet, id=pet_id, UserID=request.user)
-    if request.method == "POST":
-        pet.delete()
-        messages.success(request, "Your upload has been successfully deleted.")
-        return redirect('pets:profile')
-    
-    return render(request, 'pets/confirm_delete.html', {'pet': pet})
+    pet.delete()
+    messages.success(request, "Your upload has been successfully deleted.")
+    return redirect('pets:profile')
 
 # comments
 @login_required
@@ -280,26 +275,26 @@ def get_comments(request, pet_id):
     })
 
 @login_required
+@require_POST
 def post_comment(request, pet_id):
-    if request.method == 'POST':
-        pet = get_object_or_404(Pet, id=pet_id)
-        text = request.POST.get('comment', '').strip()
+    pet = get_object_or_404(Pet, id=pet_id)
+    text = request.POST.get('comment', '').strip()
 
-        if not text:
-            return JsonResponse({'error': 'Commment cannot be empty'}, status=400)
+    if not text:
+        return JsonResponse({'error': 'Comment cannot be empty'}, status=400)
         
-        rating,created = PetRating.objects.update_or_create(
-            PetID=pet, UserID=request.user,
-            defaults={'comment':text}
-        )
-        return JsonResponse({'status': 'success','text': text})
+    rating,created = PetRating.objects.update_or_create(
+        PetID=pet, UserID=request.user,
+        defaults={'comment':text}
+    )
+    return JsonResponse({'status': 'success','text': text})
 
 @login_required
+@require_POST
 def delete_comment(request, pet_id):
-    if request.method == 'POST':
-        rating = PetRating.objects.filter(PetID=pet_id, UserID=request.user).first()
-        if rating:
-            rating.comment = ""
-            rating.save()
-            return JsonResponse({'status': 'deleted'})
-        return JsonResponse({'error': 'Invalid request'}, status=400)
+    rating = PetRating.objects.filter(PetID=pet_id, UserID=request.user).first()
+    if rating:
+        rating.comment = ""
+        rating.save()
+        return JsonResponse({'status': 'deleted'})
+    return JsonResponse({'error': 'Invalid request'}, status=400)

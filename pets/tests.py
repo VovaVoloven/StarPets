@@ -53,8 +53,41 @@ class PetModelTests(TestCase):
         # (5+3)/2 = 4.0
         self.assertEqual(self.pet.average_rating, 4.0)
 
+# view tests        
+class DeletePetViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username='testuser', password='password123')
+        cls.other_user = User.objects.create_user(username='other', password='password123')
+        cls.pet_type = PetType.objects.create(type_name='Dog')
+        cls.pet = Pet.objects.create(TypeID=cls.pet_type, UserID=cls.user, name='TestPet')
+        
+    def setUp(self):
+        self.client.force_login(self.user)
+            
+    def test_delete_pet_user_post_succeeds(self):
+        response = self.client.post(reverse('pets:delete_pet', args=[self.pet.id]))
+        expected_url = reverse('pets:profile')
+        self.assertRedirects(response, expected_url)
+        self.assertEqual(Pet.objects.filter(id=self.pet.id).count(), 0)
+        
+    def test_delete_pet_of_other_user_fails(self):
+        other_pet=Pet.objects.create(TypeID=self.pet_type, UserID=self.other_user, name='OtherUserTestPet')
+        response = self.client.post(reverse('pets:delete_pet', args=[other_pet.id]))
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(Pet.objects.filter(id=other_pet.id).count(), 1)
+        
+    def test_delete_pet_rejects_get(self):
+        response = self.client.get(reverse('pets:delete_pet', args=[self.pet.id]))
+        self.assertEqual(response.status_code, 405)
+    
+    def test_delete_pet_blocks_logged_out_user(self):
+        self.client.logout()
+        
+        response = self.client.post(reverse('pets:delete_pet', args=[self.pet.id]))
+        expected_url = f"{reverse('pets:login')}?next={reverse('pets:delete_pet', args=[self.pet.id])}"
+        self.assertRedirects(response, expected_url)
 
-# view tests
 # tests for top pets view (& login required for all pages)
 class TopPetsViewTests(TestCase):
     
@@ -309,7 +342,7 @@ class CommentViewTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(PetRating.objects.filter(PetID=self.pet, UserID=self.user).count(), 0)
             
-    def test_post_comment_logged_out_user(self):
+    def test_post_comment_blocks_logged_out_user(self):
         self.client.logout()
         
         response = self.client.post(
@@ -355,6 +388,13 @@ class CommentViewTests(TestCase):
         self.pet.refresh_from_db()
         self.assertEqual(self.pet.average_rating, 3.0)
         
+    def test_post_comment_rejects_get(self):
+        response = self.client.get(
+                reverse('pets:post_comment', args=[self.pet.id]),
+                data={'comment': 'Nice!'}
+            )
+        self.assertEqual(response.status_code, 405)
+        
     def test_get_comment_other_user_rated_not_commented(self):
         PetRating.objects.create(PetID=self.pet, UserID=self.other_user, stars = 3)
         response = self.client.get(reverse('pets:get_comments', args=[self.pet.id]))
@@ -390,11 +430,14 @@ class CommentViewTests(TestCase):
         self.assertEqual(data['comments'][0]['username'], 'other')
         self.assertEqual(data['comments'][0]['is_owner'], False)
         
-    def test_get_comments_logged_out_user(self):
+    def test_get_comments_blocks_logged_out_user(self):
         self.client.logout()
         
         response = self.client.get(reverse('pets:get_comments', args=[self.pet.id]))
         self.assertEqual(response.status_code, 302)
+        
+
+        
         
     def test_delete_comment_valid(self):
         PetRating.objects.create(PetID=self.pet, UserID=self.user, stars = 5, comment="Beautifull pet!")
@@ -424,11 +467,17 @@ class CommentViewTests(TestCase):
         rating = PetRating.objects.get(PetID=self.pet, UserID=self.other_user)
         self.assertEqual(rating.comment, 'Beautifull pet!')
         
-    def test_delete_comment_logged_out_user(self):
+    def test_delete_comment_blocks_logged_out_user(self):
         self.client.logout()
         
         response = self.client.post(reverse('pets:delete_comment', args=[self.pet.id]))
         self.assertEqual(response.status_code, 302)
+        
+    def test_delete_comment_rejects_get(self):
+        response = self.client.get(
+                reverse('pets:delete_comment', args=[self.pet.id])
+            )
+        self.assertEqual(response.status_code, 405)
     
 # test profile view
 class ProfileViewTests(TestCase):
