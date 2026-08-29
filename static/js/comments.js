@@ -30,23 +30,50 @@ function closeCommentSidebar() {
     cancelEdit(); //reset form state
 }
 
+function createCommentWrapper(comment) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'comment-item p-2 mb-2 border-bottom';
+
+    const detailsNode = document.createElement('div');
+    detailsNode.className = 'd-flex justify-content-between align-items-center';
+
+    const usernameNode = document.createElement('span');
+    usernameNode.className = 'fw-bold small';
+    usernameNode.textContent = `@${comment.username}`;
+    detailsNode.appendChild(usernameNode);
+
+    const dateNode = document.createElement('span');
+    dateNode.className = 'text-muted';
+    dateNode.style.fontSize = '0.75rem';
+    dateNode.textContent = comment.date;
+    detailsNode.appendChild(dateNode);
+
+    wrapper.appendChild(detailsNode);
+
+    const commentNode = document.createElement('p');
+    commentNode.className = 'mb-0 small';
+    commentNode.textContent = comment.text;
+    wrapper.appendChild(commentNode);
+    return wrapper;
+}
+
 //DISPLAY COMMENTS
 function renderComments(comments) {
     const commentsList = document.getElementById('commentsList');
+
+    commentsList.replaceChildren();
+
     if (comments.length === 0) {
-        commentsList.innerHTML = '<p class="text-muted text-center">No comments yet, Be the first!</p>';
+        const emptyListNode = document.createElement('p');
+        emptyListNode.className = 'text-muted text-center';
+        emptyListNode.textContent = "No comments yet, Be the first!";
+        commentsList.appendChild(emptyListNode);
         return;
     }
-
-    commentsList.innerHTML = comments.map(c => `
-        <div class="comment-item p-2 mb-2 border-bottom">
-            <div class="d-flex justify-content-between align-items-center">
-                <span class="fw-bold small">@${c.username}</span>
-                <span class="text-muted" style="font-size: 0.75rem;">${c.date}</span>
-            </div>
-            <p class="mb-0 small">${c.text}</p>
-        </div>
-    `).join('');
+    
+    for (const comment of comments) {
+        commentsList.appendChild(createCommentWrapper(comment));
+    }
 }
 
 function updateFormVisibility(hasCommented, existingText){
