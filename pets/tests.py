@@ -9,6 +9,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 # Create your tests here.
 
+XSS_PAYLOAD = '<img src=x onerror=alert(1)>'
+
 # Tests for home page
 class HomePageTests(TestCase):
     def test_home_page_status_code(self):
@@ -436,9 +438,6 @@ class CommentViewTests(TestCase):
         response = self.client.get(reverse('pets:get_comments', args=[self.pet.id]))
         self.assertEqual(response.status_code, 302)
         
-
-        
-        
     def test_delete_comment_valid(self):
         PetRating.objects.create(PetID=self.pet, UserID=self.user, stars = 5, comment="Beautifull pet!")
         
@@ -478,6 +477,19 @@ class CommentViewTests(TestCase):
                 reverse('pets:delete_comment', args=[self.pet.id])
             )
         self.assertEqual(response.status_code, 405)
+        
+    def test_get_comments_returns_unescaped_html(self):
+        PetRating.objects.create(PetID=self.pet, UserID=self.user, stars = 4)
+        response_post = self.client.post(
+            reverse('pets:post_comment', args=[self.pet.id]),
+            data={'comment': XSS_PAYLOAD})
+        
+        self.assertEqual(response_post.status_code, 200)
+        
+        response_get = self.client.get(reverse('pets:get_comments', args=[self.pet.id]))
+        data = response_get.json()
+        self.assertEqual(data['user_comment_text'], XSS_PAYLOAD)
+        self.assertEqual(data['comments'][0]['text'], XSS_PAYLOAD)
     
 # test profile view
 class ProfileViewTests(TestCase):
@@ -603,3 +615,4 @@ class TemplateTests(TestCase):
         response = self.client.get(reverse('pets:view_user_profile', args=[other.username]))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'pets/profile.html')
+
