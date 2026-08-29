@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from .models import Pet, PetType, UserProfile, PetRating
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django_recaptcha.fields import ReCaptchaField
@@ -13,9 +14,21 @@ class ExtendedUserCreationForm(UserCreationForm):
         model = User
         fields = UserCreationForm.Meta.fields + ("email",)
         
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Drop the captcha field if API keys are not configured in settings
+        if not hasattr(settings, 'RECAPTCHA_PUBLIC_KEY'):
+            del self.fields['captcha']
+        
 # Custom login form to inject the Captcha
 class CustomAuthenticationForm(AuthenticationForm):
     captcha = ReCaptchaField(widget=ReCaptchaV3)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Drop the captcha field if API keys are not configured in settings
+        if not hasattr(settings, 'RECAPTCHA_PUBLIC_KEY'):
+            del self.fields['captcha']
 
 
 class UploadForm(forms.ModelForm):

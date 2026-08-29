@@ -145,11 +145,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # --- reCAPTCHA v3 Settings ---
 # Load the reCAPTCHA keys from environment variables for security
 load_dotenv()  # Load environment variables from .env file
-RECAPTCHA_PUBLIC_KEY = os.getenv('RECAPTCHA_PUBLIC_KEY')
-RECAPTCHA_PRIVATE_KEY = os.getenv('RECAPTCHA_PRIVATE_KEY')
+
+if os.getenv('RECAPTCHA_PUBLIC_KEY'):
+    RECAPTCHA_PUBLIC_KEY = os.getenv('RECAPTCHA_PUBLIC_KEY')
+
+if os.getenv('RECAPTCHA_PRIVATE_KEY'):
+    RECAPTCHA_PRIVATE_KEY = os.getenv('RECAPTCHA_PRIVATE_KEY')
 
 RECAPTCHA_REQUIRED_SCORE = 0.85 # The threshold (0.0 to 1.0) for a human score
 RECAPTCHA_TESTING = True
 
-# Silence the warning about using ReCaptcha test keys during local development
-SILENCED_SYSTEM_CHECKS = ['django_recaptcha.recaptcha_test_key_error']
+if DEBUG:
+    SILENCED_SYSTEM_CHECKS = ['django_recaptcha.recaptcha_test_key_error']
