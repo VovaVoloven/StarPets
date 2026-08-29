@@ -6,7 +6,21 @@ from django_recaptcha.fields import ReCaptchaField
 from django_recaptcha.widgets import ReCaptchaV3
 from django.contrib.auth.models import User
 
-class ExtendedUserCreationForm(UserCreationForm):
+class OptionalReCaptchaMixin:
+    """
+    Dynamically removes the 'captcha' field if settings.RECAPTCHA_ENABLED is False.
+    Must be placed BEFORE the main form class in the inheritance list.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # We use getattr with a default of False to avoid crashes, 
+        # and because it plays perfectly with Django's @override_settings in tests.
+        if not getattr(settings, 'RECAPTCHA_ENABLED', False):
+            if 'captcha' in self.fields:
+                del self.fields['captcha']
+
+class ExtendedUserCreationForm(OptionalReCaptchaMixin, UserCreationForm):
     email = forms.EmailField(required=True, help_text="Enter your email here")
     captcha = ReCaptchaField(widget=ReCaptchaV3)
 
@@ -14,21 +28,9 @@ class ExtendedUserCreationForm(UserCreationForm):
         model = User
         fields = UserCreationForm.Meta.fields + ("email",)
         
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Drop the captcha field if API keys are not configured in settings
-        if not hasattr(settings, 'RECAPTCHA_PUBLIC_KEY'):
-            del self.fields['captcha']
-        
 # Custom login form to inject the Captcha
-class CustomAuthenticationForm(AuthenticationForm):
+class CustomAuthenticationForm(OptionalReCaptchaMixin, AuthenticationForm):
     captcha = ReCaptchaField(widget=ReCaptchaV3)
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Drop the captcha field if API keys are not configured in settings
-        if not hasattr(settings, 'RECAPTCHA_PUBLIC_KEY'):
-            del self.fields['captcha']
 
 
 class UploadForm(forms.ModelForm):
