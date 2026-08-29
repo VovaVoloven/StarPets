@@ -2,9 +2,9 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from PIL import Image
 from io import BytesIO
-from pets.forms import UploadForm
+from pets.forms import UploadForm, ExtendedUserCreationForm, CustomAuthenticationForm
 from .models import Bookmark, Pet, PetRating, PetType, UserProfile
-from django.test import TestCase
+from django.test import TestCase, SimpleTestCase, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 # Create your tests here.
@@ -54,6 +54,24 @@ class PetModelTests(TestCase):
         self.pet.refresh_from_db()
         # (5+3)/2 = 4.0
         self.assertEqual(self.pet.average_rating, 4.0)
+        
+class CaptchaFormTests(SimpleTestCase):
+    
+    @override_settings(RECAPTCHA_ENABLED=True)
+    def test_forms_include_captcha_when_enabled(self):
+        auth_form = CustomAuthenticationForm()
+        register_form = ExtendedUserCreationForm()
+        
+        self.assertIn('captcha', auth_form.fields)
+        self.assertIn('captcha', register_form.fields)
+
+    @override_settings(RECAPTCHA_ENABLED=False)
+    def test_forms_drop_captcha_when_disabled(self):
+        auth_form = CustomAuthenticationForm()
+        register_form = ExtendedUserCreationForm()
+        
+        self.assertNotIn('captcha', auth_form.fields)
+        self.assertNotIn('captcha', register_form.fields)
 
 # view tests        
 class DeletePetViewTests(TestCase):
