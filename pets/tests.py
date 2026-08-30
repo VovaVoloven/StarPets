@@ -295,6 +295,44 @@ class RatingViewTests(TestCase):
         data = response.json()
         self.assertTrue(data['success'])
         self.assertEqual(data['new_average'], 5.0)
+        
+    def test_rate_pet_missing_pet_fails(self):
+        non_existent_id = 9999
+        response = self.client.post(
+            reverse('pets:rate_pet', args=[non_existent_id]),
+            data='{"rating": 5}',
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 404)
+        
+    def test_rate_pet_bad_json_rejected_and_caught(self):
+        response = self.client.post(
+            reverse('pets:rate_pet', args=[self.pet.id]),
+            data='{bad json',
+            content_type='application/json'
+        )
+        data = response.json()
+        
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(data['error'], 'Invalid rating format')
+        
+    def test_rate_pet_out_of_range_rejected_and_caught(self):
+        response = self.client.post(
+            reverse('pets:rate_pet', args=[self.pet.id]),
+            data='{"rating": 6}',
+            content_type='application/json'
+        )
+        data = response.json()
+        
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(data['error'], 'Rating must be between 1 and 5')
+        
+    def test_rate_pet_rejects_get(self):
+        response = self.client.get(
+            reverse('pets:rate_pet', args=[self.pet.id]),
+        )
+        self.assertEqual(response.status_code, 405)
 
     # update existing rating
     def test_update_rating(self):
@@ -351,6 +389,24 @@ class CommentViewTests(TestCase):
                 reverse('pets:post_comment', args=[self.pet.id]),
                 data={'comment': '     '}
             )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(PetRating.objects.filter(PetID=self.pet, UserID=self.user).count(), 0)
+        
+    def test_post_comment_exactly_200_chars(self):
+        max_length_comment = 'a' * 200
+        response = self.client.post(
+            reverse('pets:post_comment', args=[self.pet.id]),
+            data={'comment': max_length_comment}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(PetRating.objects.get(PetID=self.pet, UserID=self.user).comment, max_length_comment)
+        
+    def test_post_comment_201_chars_fails(self):
+        too_long_comment = 'a' * 201
+        response = self.client.post(
+            reverse('pets:post_comment', args=[self.pet.id]),
+            data={'comment': too_long_comment}
+        )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(PetRating.objects.filter(PetID=self.pet, UserID=self.user).count(), 0)
         

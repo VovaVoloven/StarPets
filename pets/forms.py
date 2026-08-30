@@ -59,7 +59,7 @@ class UserProfileForm(forms.ModelForm):
 class CommentForm(forms.ModelForm):
     class Meta:
         model = PetRating
-        fields = ['stars', 'comment']
+        fields = ['comment']
         widgets = {
             'comment': forms.Textarea(attrs={
                 'id': 'commentContent',
@@ -69,3 +69,7 @@ class CommentForm(forms.ModelForm):
                 'maxlength': '200'
             }),
         }
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['comment'].required = True
+        self.fields['comment'].error_messages = {'required': 'Comment cannot be empty'}
