@@ -220,28 +220,26 @@ def sign_up(request):
     return render(request, 'pets/signup.html', {'form':form})
 
 @login_required
+@require_POST
 def rate_pet(request, pet_id):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            stars = int(data.get('rating', 0))
-            
-            if 1<= stars <= 5:
-                pet = get_object_or_404(Pet, id=pet_id)
-                
-                PetRating.objects.update_or_create(
-                    UserID=request.user,
-                    PetID=pet,
-                    defaults={'stars': stars}
-                )
-                
-                pet.refresh_from_db()
-                
-                return JsonResponse({'success' : True, 'new_average' : pet.average_rating})
-        except Exception as e:
-            return JsonResponse({'error' : str(e)}, status=400)
-    return JsonResponse({'error' : 'Invalid request'}, status=400)
-
+    pet = get_object_or_404(Pet, id=pet_id)
+    try:
+        data = json.loads(request.body)
+        stars = int(data.get('rating', 0))
+    except (json.JSONDecodeError, ValueError, TypeError, AttributeError):
+        return JsonResponse({'error' : "Invalid rating format"}, status=400)    
+    
+    if 1<= stars <= 5:
+        PetRating.objects.update_or_create(
+            UserID=request.user,
+            PetID=pet,
+            defaults={'stars': stars}
+        )
+        
+        pet.refresh_from_db()
+        
+        return JsonResponse({'success' : True, 'new_average' : pet.average_rating})
+    return JsonResponse({'error' : "Rating must be between 1 and 5"}, status=400)
 
 #pet deletion
 
@@ -278,16 +276,18 @@ def get_comments(request, pet_id):
 @require_POST
 def post_comment(request, pet_id):
     pet = get_object_or_404(Pet, id=pet_id)
-    text = request.POST.get('comment', '').strip()
-
-    if not text:
-        return JsonResponse({'error': 'Comment cannot be empty'}, status=400)
+    form = CommentForm(request.POST)
+    
+    if form.is_valid():
+        text = form.cleaned_data['comment']
         
-    rating,created = PetRating.objects.update_or_create(
-        PetID=pet, UserID=request.user,
-        defaults={'comment':text}
-    )
-    return JsonResponse({'status': 'success','text': text})
+        PetRating.objects.update_or_create(
+            PetID=pet, UserID=request.user,
+            defaults={'comment':text}
+        )
+        return JsonResponse({'status': 'success','text': text})
+    error_msg = form.errors['comment'][0] if 'comment' in form.errors else "Invalid submission"
+    return JsonResponse({'error': error_msg}, status=400)
 
 @login_required
 @require_POST
