@@ -24,10 +24,20 @@ class Pet(models.Model):
     def __str__(self):
         return self.name
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._initial_picture = self.__dict__.get('picture')
+    
     def save(self, *args, **kwargs):
+        is_picture_changed = False
+        current_picture_name = self.picture.name if self.picture else None
+        
+        if self.pk is None or current_picture_name != self._initial_picture:
+            is_picture_changed = True
+
         super().save(*args, **kwargs)
 
-        if self.picture:
+        if is_picture_changed and self.picture:
             img_path = self.picture.path
             img = Image.open(img_path)
 
@@ -38,6 +48,7 @@ class Pet(models.Model):
             # thumbnail() PRESERVES the original aspect ratio (No padding!)
             img.thumbnail((1200, 1200)) 
             img.save(img_path)
+            self._initial_picture = self.picture.name
 
 class PetRating(models.Model):
     PetID = models.ForeignKey(Pet, on_delete=models.CASCADE)

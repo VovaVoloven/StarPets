@@ -6,6 +6,9 @@ from pets.forms import UploadForm, ExtendedUserCreationForm, CustomAuthenticatio
 from .models import Bookmark, Pet, PetRating, PetType, UserProfile
 from django.test import TestCase, SimpleTestCase, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
+import hashlib
+import tempfile
+import io
 
 # Create your tests here.
 
@@ -54,6 +57,46 @@ class PetModelTests(TestCase):
         self.pet.refresh_from_db()
         # (5+3)/2 = 4.0
         self.assertEqual(self.pet.average_rating, 4.0)
+        
+class PetImageTests(TestCase):   
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='password123')
+        self.other_user = User.objects.create_user(username='rater', password='password123')
+        self.pet_type = PetType.objects.create(type_name='Dog')
+        
+        self.media_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.media_dir.cleanup)
+        
+    def test_rating_does_not_reencode_image(self):
+        with self.settings(MEDIA_ROOT=self.media_dir.name):
+            
+            image_io = io.BytesIO()
+            Image.effect_noise((300, 300), 50).convert('RGB').save(image_io, format='JPEG')
+            
+            fake_image = SimpleUploadedFile(
+                'test_pet.jpg',
+                image_io.getvalue(),
+                content_type='image/jpeg'
+            )
+            
+            pet = Pet.objects.create(
+                TypeID=self.pet_type,
+                UserID=self.user,
+                name='TestPet',
+                picture=fake_image
+            )
+            
+            def get_file_hash(filepath):
+                with open(filepath, 'rb') as f:
+                    return hashlib.sha256(f.read()).hexdigest()
+                    
+            initial_hash = get_file_hash(pet.picture.path)
+            
+            PetRating.objects.create(PetID=pet, UserID=self.user, stars = 3)
+            
+            post_rating_hash = get_file_hash(pet.picture.path)
+            
+            self.assertEqual(initial_hash, post_rating_hash)
         
 class CaptchaFormTests(SimpleTestCase):
     

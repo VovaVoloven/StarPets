@@ -20,7 +20,7 @@ def update_pet_average_rating(sender, instance, **kwargs):
     pet.average_rating = stats['stars__avg'] or 0
     
     # Save the updated average to the db
-    pet.save()
+    pet.save(update_fields=['average_rating'])
     
     
 # --- PROFILE PIC DELETE LOGIC ---
