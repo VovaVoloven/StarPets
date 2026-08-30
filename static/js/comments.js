@@ -32,6 +32,7 @@ async function openCommentSidebar(petId) {
         updateFormVisibility(data.user_has_commented, data.user_comment_text);
     } catch (error) {
         commentsList.innerHTML = '<p class="text-danger text-center"> Error loading comments.</p>';
+        console.error("Failed to load comments:", error);
     }
 }
 
@@ -70,6 +71,8 @@ function createCommentWrapper(comment) {
 
     const commentNode = document.createElement('p');
     commentNode.className = 'mb-0 small';
+    commentNode.style.whiteSpace = 'pre-wrap';
+    commentNode.style.wordBreak = 'break-word';
     commentNode.textContent = comment.text;
     wrapper.appendChild(commentNode);
     return wrapper;
