@@ -2,7 +2,15 @@ let currentPetId = null;
 
 //OPEN SIDEBAR
 async function openCommentSidebar(petId) {
+    if (!petId) return;
+
     currentPetId = petId;
+
+    const errorDiv = document.getElementById('commentError');
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+        errorDiv.textContent = '';
+    }
 
     document.getElementById('commentSidebar').classList.add('active');
     document.getElementById('overlay').classList.add('active');
@@ -13,6 +21,11 @@ async function openCommentSidebar(petId) {
 
     try{
         const response = await fetch(`${GET_COMMENTS_URL}${petId}/`);
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
         const data = await response.json();
         
         renderComments(data.comments);
@@ -26,6 +39,11 @@ async function openCommentSidebar(petId) {
 function closeCommentSidebar() {
     document.getElementById('commentSidebar').classList.remove('active');
     document.getElementById('overlay').classList.remove('active');
+    const errorDiv = document.getElementById('commentError');
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+        errorDiv.textContent = '';
+    }
     currentPetId = null;
     cancelEdit(); //reset form state
 }
@@ -99,38 +117,81 @@ document.getElementById('commentForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const textArea = e.target.querySelector('textarea');
     const text = textArea.value.trim();
+    const errorDiv = document.getElementById('commentError');
 
-    if (!text || !currentPetId) return;
+    if (errorDiv) errorDiv.style.display = 'none';
+
+    if (!text || !currentPetId) {
+        if (errorDiv && !text) {
+            errorDiv.textContent = "Comment cannot be empty.";
+            errorDiv.style.display = 'block';
+        }
+        return;
+    }
 
     const formData = new FormData();
     formData.append('comment', text);
     formData.append('csrfmiddlewaretoken', CSRF_TOKEN);
 
-    const response = await fetch(`${POST_COMMENT_URL}${currentPetId}/`, {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    });
+    try {
+        const response = await fetch(`${POST_COMMENT_URL}${currentPetId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
 
-    if (response.ok) {
-        openCommentSidebar(currentPetId);//refresh everything
+        if (response.ok) {
+            openCommentSidebar(currentPetId);//refresh everything
+        } else {
+            const data = await response.json();
+            if (errorDiv) {
+                errorDiv.textContent = data.error || "An error occurred.";
+                errorDiv.style.display = 'block';
+            }
+        }
+    } catch (error) {
+        if (errorDiv) {
+            errorDiv.textContent = "A network or server error occurred. Please try again.";
+            errorDiv.style.display = 'block';
+        }
+        console.error("Submission failed:", error);
     }
-})
+});
 
 //DELETE COMMENT
 async function deleteComment() {
+    if (!currentPetId) return;
+
     if (!confirm("Are you sure you want to delete your comment?")) return;
 
-    const response = await fetch(`${DELETE_COMMENT_URL}${currentPetId}/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': CSRF_TOKEN,
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    });
+    const errorDiv = document.getElementById('commentError');
+    if (errorDiv) errorDiv.style.display = 'none';
 
-    if (response.ok) {
-        openCommentSidebar(currentPetId); //refresh to show empty form
+
+    try {
+        const response = await fetch(`${DELETE_COMMENT_URL}${currentPetId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (response.ok) {
+            openCommentSidebar(currentPetId); //refresh to show empty form
+        } else {
+            const data = await response.json();
+            if (errorDiv) {
+                errorDiv.textContent = data.error || "Failed to delete comment.";
+                errorDiv.style.display = 'block';
+            }
+        }
+    } catch (error) {
+        if (errorDiv) {
+            errorDiv.textContent = "A network or server error occurred. Please try again.";
+            errorDiv.style.display = 'block';
+        }
+        console.error("Deletion failed:", error);
     }
 }
 
