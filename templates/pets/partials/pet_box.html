@@ -40,12 +40,12 @@
                 <span class="user-rating-text text-muted fw-bold small">({{ user_rating }}/5)</span>
             </div>
             
-            <div class="average-rating-container text-amber small text-center">
+            <div class="average-rating-container small text-center">
                 {% if pet.recent_count %}
-                    {{ pet.recent_avg|default:0|draw_stars }}
+                    {% draw_stars pet.recent_avg|default:0 %}
                     <div class="text-muted mt-1" style="font-size: 0.75rem;">(This week)</div>
                 {% else %}
-                    {{ pet.average_rating|default:0|draw_stars }}
+                    {% draw_stars pet.average_rating|default:0 %}
                 {% endif %}
             </div>
         </div> 

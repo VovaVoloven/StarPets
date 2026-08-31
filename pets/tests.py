@@ -9,8 +9,9 @@ from django.urls import reverse
 from django.test import TestCase, SimpleTestCase, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
-from pets.forms import UploadForm, ExtendedUserCreationForm, CustomAuthenticationForm
+from pets.forms import ExtendedUserCreationForm, CustomAuthenticationForm
 from pets.models import Bookmark, Pet, PetRating, PetType, UserProfile
+from pets.templatetags.pet_filters import draw_stars
 
 
 # Create your tests here.
@@ -100,6 +101,20 @@ class PetImageTests(TestCase):
             post_rating_hash = get_file_hash(pet.picture.path)
             
             self.assertEqual(initial_hash, post_rating_hash)
+            
+class DrawStarsTagTests(TestCase):
+    def test_draw_stars_fill_percentage(self):
+        self.assertEqual(draw_stars(0)['fill_percentage'], 0.0)
+        self.assertEqual(draw_stars(2.5)['fill_percentage'], 50.0)
+        self.assertEqual(draw_stars(5)['fill_percentage'], 100.0)
+        
+        # Out of bounds (Clamping)
+        self.assertEqual(draw_stars(-1)['fill_percentage'], 0.0)
+        self.assertEqual(draw_stars(6)['fill_percentage'], 100.0)
+        
+        # Bad data handling (Strings, None)
+        self.assertEqual(draw_stars('invalid')['fill_percentage'], 0.0)
+        self.assertEqual(draw_stars(None)['fill_percentage'], 0.0)
         
 class CaptchaFormTests(SimpleTestCase):
     

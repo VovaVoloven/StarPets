@@ -1,8 +1,6 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from pets import views
-from django.conf import settings
-from django.conf.urls.static import static
 from pets.forms import CustomAuthenticationForm
 
 app_name = 'pets'
@@ -34,5 +32,3 @@ urlpatterns = [
     path('post-comment/<int:pet_id>/', views.post_comment, name='post_comment'),
     path('delete-comment/<int:pet_id>/', views.delete_comment, name='delete_comment'),
 ]
-
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

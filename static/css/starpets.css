@@ -104,6 +104,39 @@ body.vintage-bg {
     background-color: transparent; 
 }
 
+.average-rating-header {
+    color: #374151;
+}
+
+.star-rating-wrapper {
+    display: inline-block;
+    position: relative;
+    letter-spacing: 2px;
+    font-size: 1.2rem;
+    pointer-events: none;
+}
+
+.star-base-layer {
+    color: #e5e7eb;
+    display: inline-block;
+}
+
+.gold-stars-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    pointer-events: none;
+    color: #f59e0b;
+}
+
+.rating-text {
+    color: #6b7280;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
 /* Banner specific ratio */
 .polaroid-featured .pet-image-wrapper { aspect-ratio: 21 / 9; }
 

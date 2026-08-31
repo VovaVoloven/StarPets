@@ -137,11 +137,8 @@ def profile(request, username=None):
     #no username given, & user is logged in: display their own profile
     #if username given, show that user's profile
 
-    if username is None:
-        if request.user.is_authenticated:
-            viewed_user = request.user
-        else:
-            return redirect('pets:login')
+    if username is None: 
+        viewed_user = request.user
     else:
         viewed_user = get_object_or_404(User, username=username)
 

@@ -3,7 +3,6 @@
 document.addEventListener('DOMContentLoaded', function () {
 
     const buttons = document.querySelectorAll('.toggle-bookmark-btn');
-    const starWrappers = document.querySelectorAll('.interactive-rating .star-rating-wrapper');
 
     // --- BOOKMARK LOGIC ---
     buttons.forEach(button => {
