@@ -41,7 +41,7 @@ def home(request):
 def top_pets(request):
     # Calculate the exact time 7 days ago
     one_week_ago = timezone.now() - datetime.timedelta(days=7)
-    recent_rule = Q(petrating__rating_date__gte=one_week_ago) & Q(petrating__stars__gt=0)
+    recent_rule = Q(petrating__date_rated__gte=one_week_ago) & Q(petrating__stars__gt=0)
     
     top_pets_list = Pet.objects.annotate(
         recent_avg=Avg('petrating__stars', filter=recent_rule),
@@ -266,7 +266,7 @@ def get_comments(request, pet_id):
     comments_data = [{
         'username': r.UserID.username,
         'text': r.comment,
-        'date': r.rating_date.strftime("%b %d, %Y"),
+        'date': r.date_rated.strftime("%b %d, %Y"),
         'is_owner': r.UserID == request.user
     }for r in ratings if r.comment]
 

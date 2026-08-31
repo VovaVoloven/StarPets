@@ -55,7 +55,7 @@ class PetRating(models.Model):
     UserID = models.ForeignKey(User, on_delete=models.CASCADE)
     stars = models.IntegerField(default=0)
     comment = models.TextField(blank=True, max_length=200)
-    rating_date = models.DateTimeField(auto_now_add=True)
+    date_rated = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('PetID', 'UserID')

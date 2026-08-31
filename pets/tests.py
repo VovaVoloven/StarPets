@@ -215,7 +215,7 @@ class TopPetsViewTests(TestCase):
         rating = PetRating.objects.create(PetID=pet_old, UserID=self.user, stars = 5)
         
         eight_days_ago = timezone.now() - timedelta(days=8)
-        PetRating.objects.filter(pk=rating.pk).update(rating_date=eight_days_ago)
+        PetRating.objects.filter(pk=rating.pk).update(date_rated=eight_days_ago)
         
         response = self.client.get(reverse('pets:top_pets'))
         self.assertEqual(len(response.context['top_pets']), 0)
