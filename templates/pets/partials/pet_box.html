@@ -41,7 +41,7 @@
             </div>
             
             <div class="average-rating-container text-amber small text-center">
-                {% if if pet.recent_count %}
+                {% if pet.recent_count %}
                     {{ pet.recent_avg|default:0|draw_stars }}
                     <div class="text-muted mt-1" style="font-size: 0.75rem;">(This week)</div>
                 {% else %}
