@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.db.models import Exists, OuterRef, Subquery, Value, IntegerField
+from django.db.models import Exists, OuterRef, Subquery, Value, IntegerField, Q, Avg, Count
 from django.db.models.functions import Coalesce
 from .forms import ExtendedUserCreationForm, UploadForm, UserProfileForm, CustomAuthenticationForm, CommentForm
 from .models import Bookmark, Pet, PetType, PetRating, UserProfile
@@ -41,15 +41,19 @@ def home(request):
 def top_pets(request):
     # Calculate the exact time 7 days ago
     one_week_ago = timezone.now() - datetime.timedelta(days=7)
+    recent_rule = Q(petrating__rating_date__gte=one_week_ago) & Q(petrating__stars__gt=0)
     
-    # Fetch and filter pets added in the last 7 days, then get the top 4 pets based on their average rating, ordered from highest to lowest
-    top_pets_list = Pet.objects.filter(date_added__gte=one_week_ago).order_by('-average_rating')[:4]
+    top_pets_list = Pet.objects.annotate(
+        recent_avg=Avg('petrating__stars', filter=recent_rule),
+        recent_count=Count('petrating', filter=recent_rule)
+    ).filter(
+        recent_count__gte=1
+    ).order_by(
+        '-recent_avg',
+        '-date_added'
+    )
     
-    # If the list is empty, fallback to the all-time top 4
-    if not top_pets_list.exists():
-        top_pets_list = Pet.objects.order_by('-average_rating')[:4]
-    
-    top_pets_list = _annotated_pets(top_pets_list, request.user)
+    top_pets_list = _annotated_pets(top_pets_list, request.user)[:4]
     
     # Add the top pets to the context dictionary and render the top pets template
     context = {

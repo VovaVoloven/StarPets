@@ -1,14 +1,17 @@
-from django.contrib.auth.models import User
-from django.urls import reverse
-from PIL import Image
-from io import BytesIO
-from pets.forms import UploadForm, ExtendedUserCreationForm, CustomAuthenticationForm
-from .models import Bookmark, Pet, PetRating, PetType, UserProfile
-from django.test import TestCase, SimpleTestCase, override_settings
-from django.core.files.uploadedfile import SimpleUploadedFile
 import hashlib
 import tempfile
 import io
+from PIL import Image
+from io import BytesIO
+from datetime import timedelta
+from django.contrib.auth.models import User
+from django.urls import reverse
+from django.test import TestCase, SimpleTestCase, override_settings
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
+from pets.forms import UploadForm, ExtendedUserCreationForm, CustomAuthenticationForm
+from pets.models import Bookmark, Pet, PetRating, PetType, UserProfile
+
 
 # Create your tests here.
 
@@ -157,9 +160,11 @@ class TopPetsViewTests(TestCase):
     def setUp(self):
         # create test user
         self.user = User.objects.create_user(username='testuser', password='password123')
+        self.other_user = User.objects.create_user(username='other', password='password123')
+        self.pet_type = PetType.objects.create(type_name='Dog')
     
     # test that user cannot access pages unless logged in
-    def test_login_required(self):
+    def test_top_pets_blocks_logged_out_user(self):
         #for top pets access
         response = self.client.get(reverse('pets:top_pets'))
         self.assertEqual(response.status_code, 302)
@@ -174,29 +179,72 @@ class TopPetsViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
 
     #test that logout works and blocks access
-    def test_logout_blocks_access(self):
+    def test_top_pets_logout_blocks_access(self):
         self.client.login(username='testuser', password='password123')
         self.client.logout()
         response = self.client.get(reverse('pets:top_pets'))
         self.assertEqual(response.status_code, 302)
 
-    #test that when no pets, page still loads
-    def test_top_pets_empty(self):
+    def test_top_pets_unrated_pet_excluded_and_empty_state_renders(self):
         self.client.login(username='testuser', password='password123')
+        Pet.objects.create(TypeID=self.pet_type, UserID=self.user, name='TestPet')
+        
         response = self.client.get(reverse('pets:top_pets'))
+        
         self.assertEqual(response.status_code, 200)
-
-    #test ordering of pets by rating
-    def test_top_pets_ordering(self):
+        self.assertEqual(len(response.context['top_pets']), 0)
+        self.assertContains(response, "No pets have been rated this week. Be the first!")
+        
+    def test_top_pets_higher_star_rating_outranks_lower(self):
         self.client.login(username='testuser', password='password123')
-        dog = PetType.objects.create(type_name='Dog')
-        pet1 = Pet.objects.create(TypeID=dog, UserID=self.user, name='Low')
-        pet2 = Pet.objects.create(TypeID=dog, UserID=self.user, name='High')
-        PetRating.objects.create(PetID=pet1, UserID=self.user, stars=2)
-        PetRating.objects.create(PetID=pet2, UserID=self.user, stars=5)
+        pet_winner = Pet.objects.create(TypeID=self.pet_type, UserID=self.user, name='Winner')
+        pet_loser = Pet.objects.create(TypeID=self.pet_type, UserID=self.user, name='Loser')
+        
+        PetRating.objects.create(PetID=pet_winner, UserID=self.user, stars = 5)
+        PetRating.objects.create(PetID=pet_loser, UserID=self.user, stars = 3)
+        
         response = self.client.get(reverse('pets:top_pets'))
-        pets = list(response.context['top_pets'])
-        self.assertEqual(pets[0].name, 'High')
+        top_pets = list(response.context['top_pets'])
+        
+        self.assertEqual(len(top_pets), 2)
+        self.assertEqual(top_pets[0], pet_winner)
+        
+    def test_top_pets_ratings_outside_window_are_excluded(self):
+        self.client.login(username='testuser', password='password123')
+        pet_old = Pet.objects.create(TypeID=self.pet_type, UserID=self.user, name='Old Rating Pet')
+        rating = PetRating.objects.create(PetID=pet_old, UserID=self.user, stars = 5)
+        
+        eight_days_ago = timezone.now() - timedelta(days=8)
+        PetRating.objects.filter(pk=rating.pk).update(rating_date=eight_days_ago)
+        
+        response = self.client.get(reverse('pets:top_pets'))
+        self.assertEqual(len(response.context['top_pets']), 0)
+    
+    def test_top_pets_deterministic_tie_breaker(self):
+        self.client.login(username='testuser', password='password123')
+        pet_older = Pet.objects.create(TypeID=self.pet_type, UserID=self.user, name='Older Tied Pet')
+        pet_newer = Pet.objects.create(TypeID=self.pet_type, UserID=self.user, name='Newer Tied Pet')
+        
+        yesterday = timezone.now() - timedelta(days=1)
+        Pet.objects.filter(pk=pet_older.pk).update(date_added=yesterday)
+        
+        PetRating.objects.create(PetID=pet_older, UserID=self.user, stars = 4)
+        PetRating.objects.create(PetID=pet_newer, UserID=self.other_user, stars = 4)
+        
+        response = self.client.get(reverse('pets:top_pets'))
+        top_pets = list(response.context['top_pets'])
+        
+        self.assertEqual(top_pets[0], pet_newer)
+        self.assertEqual(top_pets[1], pet_older)
+        
+    def test_top_pets_comment_only_rating_is_excluded(self):
+        self.client.login(username='testuser', password='password123')
+        pet_comment_only = Pet.objects.create(TypeID=self.pet_type, UserID=self.user, name="Comment Only")
+        
+        PetRating.objects.create(PetID=pet_comment_only, UserID=self.user, stars=0, comment="Nice pet!")
+        
+        response = self.client.get(reverse('pets:top_pets'))
+        self.assertEqual(len(response.context['top_pets']), 0)
 
 #tests for bookmark view
 class BookmarkViewTests(TestCase):
