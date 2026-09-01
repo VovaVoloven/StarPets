@@ -1,16 +1,10 @@
-"""Guards pets.views._annotated_pets — both halves of it.
-
-Query-count tests prove the annotations replaced per-row queries.
-Render tests prove the annotations actually reach the template.
-A page can be fast and wrong; only the second kind catches that.
-"""
 from django.contrib.auth.models import User
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from .models import Bookmark, Pet, PetRating, PetType, UserProfile
+from ..models import Bookmark, Pet, PetRating, PetType, UserProfile
 
 
 class _PetFixtureMixin:
