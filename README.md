@@ -1,4 +1,5 @@
 # ⭐🐾 StarPets
+[![Django CI](https://github.com/VovaVoloven/StarPets/actions/workflows/ci.yml/badge.svg)]
 
 A Django-based photo-sharing platform where users can upload, rate, and comment on pets. Built for pet lovers to discover and share high-quality pet profiles with a community-driven trending leaderboard.
 ![Homepage Screenshot](docs/Homepage.png)

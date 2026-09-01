@@ -1,0 +1,45 @@
+name: Django CI
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with: 
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Verify configuration
+        run: python manage.py check
+
+      - name: Verify database and models integrity
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Pre-production checks
+        run: python manage.py check --deploy
+        env: 
+          RECAPTCHA_PUBLIC_KEY: '6LcFakePublicKeyForCiChecks0000000000000'
+          RECAPTCHA_PRIVATE_KEY: '6LcFakePrivateKeyForCiChecks0000000000000'
+          SECRET_KEY: 'dummy-secret-key-string-not-for-production-and-it-must-be-long!"@$_~'
+          DEBUG: 'False'
+          ALLOWED_HOSTS: '127.0.0.1,localhost'
+  
+      - name: Run tests suite
+        run: python manage.py test
