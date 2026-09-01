@@ -1,9 +1,11 @@
 import hashlib
 import tempfile
 import io
+import os
 from PIL import Image
 from io import BytesIO
 from datetime import timedelta
+from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.test import TestCase, SimpleTestCase, override_settings
@@ -12,6 +14,7 @@ from django.utils import timezone
 from pets.forms import ExtendedUserCreationForm, CustomAuthenticationForm
 from pets.models import Bookmark, Pet, PetRating, PetType, UserProfile
 from pets.templatetags.pet_filters import draw_stars
+from starpets_project.env_parsers import get_env_bool, get_env_list
 
 
 # Create your tests here.
@@ -115,6 +118,32 @@ class DrawStarsTagTests(TestCase):
         # Bad data handling (Strings, None)
         self.assertEqual(draw_stars('invalid')['fill_percentage'], 0.0)
         self.assertEqual(draw_stars(None)['fill_percentage'], 0.0)
+        
+class EnvParserTests(SimpleTestCase):
+    
+    @patch.dict(os.environ, {'TEST_BOOL': 'True'})
+    def test_get_env_bool_true(self):
+        self.assertEqual(get_env_bool('TEST_BOOL'), True)
+        
+    @patch.dict(os.environ, {'TEST_BOOL': 'true'})
+    def test_get_env_bool_lowercase_true(self):
+        self.assertEqual(get_env_bool('TEST_BOOL'), True)
+
+    @patch.dict(os.environ, {'TEST_BOOL': 'False'})
+    def test_get_env_bool_false(self):
+        self.assertEqual(get_env_bool('TEST_BOOL'), False)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_get_env_bool_missing_uses_default(self):
+        self.assertEqual(get_env_bool('TEST_BOOL', False), False)
+
+    @patch.dict(os.environ, {'TEST_LIST': '127.0.0.1, localhost'})
+    def test_get_env_list_valid_string(self):
+        self.assertEqual(get_env_list('TEST_LIST'), ['127.0.0.1', 'localhost'])
+        
+    @patch.dict(os.environ, {'TEST_LIST': ''})
+    def test_get_env_list_empty_string(self):
+        self.assertEqual(get_env_list('TEST_LIST', []), [])
         
 class CaptchaFormTests(SimpleTestCase):
     

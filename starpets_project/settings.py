@@ -11,8 +11,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+from starpets_project.env_parsers import get_env_bool, get_env_list
 from pathlib import Path
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
+
+load_dotenv()  # Load environment variables from .env file
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,13 +32,20 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-07^uncs!c1&%v8&70d14xhc!bym@-gg!xr%uet08i&3q0%iz@!'
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = get_env_bool('DEBUG', True)
 
-ALLOWED_HOSTS = []
+# SECURITY WARNING: keep the secret key used in production secret!
+_key = os.getenv('SECRET_KEY')
+if not _key:
+    if not DEBUG:
+        raise ImproperlyConfigured("Need a secret key for production")
+    else:
+        SECRET_KEY = 'debug-secret-key-string-not-for-production-and-it-must-be-long!"£$_~'
+else:
+    SECRET_KEY = _key
+
+ALLOWED_HOSTS = get_env_list('ALLOWED_HOSTS', [])
 
 
 # Application definition
@@ -128,7 +139,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --- reCAPTCHA v3 Settings ---
 # Load the reCAPTCHA keys from environment variables for security
-load_dotenv()  # Load environment variables from .env file
 
 # Read the environment variables exactly once
 _public_key = os.getenv('RECAPTCHA_PUBLIC_KEY')
@@ -146,3 +156,11 @@ RECAPTCHA_REQUIRED_SCORE = 0.85 # The threshold (0.0 to 1.0) for a human score
 
 if DEBUG:
     SILENCED_SYSTEM_CHECKS = ['django_recaptcha.recaptcha_test_key_error']
+    
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
